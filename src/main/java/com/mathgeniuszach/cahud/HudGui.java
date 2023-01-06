@@ -149,7 +149,7 @@ public class HudGui extends Gui {
             if (timer5 < 0) {
                 if (state == State.WAVE && creepers < getMaxCreepers(wave)[0]) {
                     timer5 += 100;
-                    timer5Activated = 0;
+                    if (timer5Activated >= 40) timer5Activated = 0;
                 } else {
                     timer5 = 0;
                 }
