@@ -1,0 +1,16 @@
+[
+{
+  "modid": "${modid}",
+  "name": "Creeper Attack HUD",
+  "description": "Provides useful information for Hypixel's Creeper Attack on your HUD.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "https://github.com/xMGZx/CreeperAttackHUD",
+  "updateUrl": "",
+  "authorList": ["mathgeniuszach"],
+  "credits": "mathgeniuszach",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
