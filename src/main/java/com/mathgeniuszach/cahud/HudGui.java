@@ -40,7 +40,7 @@ public class HudGui extends Gui {
     public int timerI = 0;
     public long timer5 = 0;
     public long timer4 = 0;
-    public int timer5Activated = 20;
+    public int timer5Activated = 40;
     public int golemSpawn = 20;
 
     public int blazes = 0;
@@ -146,7 +146,14 @@ public class HudGui extends Gui {
         if (state == State.INTERMISSION || state == State.WAVE) {
             timer5 -= elapsedTicks;
             timer4 -= elapsedTicks;
-            if (timer5 < 0) timer5 = 0;
+            if (timer5 < 0) {
+                if (state == State.WAVE && creepers < getMaxCreepers(wave)[0]) {
+                    timer5 += 100;
+                    timer5Activated = 0;
+                } else {
+                    timer5 = 0;
+                }
+            }
             if (timer4 < -20) timer4 = -20;
         }
         
@@ -180,7 +187,7 @@ public class HudGui extends Gui {
 
             if (!ConfigData.disable5Sound) CAUtil.playSound(ConfigData.soundTimer5);
         }
-        if (timer5Activated < 20) {
+        if (timer5Activated < 40) {
             timer5Activated += 1;
         }
         
@@ -298,7 +305,7 @@ public class HudGui extends Gui {
         // System.out.println("spawn");
         if (event.entity instanceof EntityBlaze) {
             blazes += 1;
-            if (timer5Activated >= 20) timer5Activated = 0;
+            if (timer5Activated >= 40) timer5Activated = 0;
             if (blazes < getMaxBlazes(wave)) timer5 = 100;
         } else if (event.entity instanceof EntityCreeper) {
             // Print some data so I can see where the creeper spawned
@@ -319,7 +326,7 @@ public class HudGui extends Gui {
                 creeperSpawn = 0;
                 zombiesComplete = false;
             }
-            if (timer5Activated >= 20) timer5Activated = 0;
+            if (timer5Activated >= 40) timer5Activated = 0;
         } else if (event.entity instanceof EntityZombie) {
             zombies += 1;
             timer4 = 80;
