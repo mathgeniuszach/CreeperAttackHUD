@@ -20,15 +20,12 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerChangedDimensionEvent;
 
 public class ClientEventHandler {
 
     private HudGui hudGui;
     private boolean inCreeperAttack = false;
-
-    public ClientEventHandler() {
-        hudGui = new HudGui();
-    }
 
     public void updateInCreeperAttack() {
         // System.out.println("updating status");
@@ -46,6 +43,9 @@ public class ClientEventHandler {
         String s = CAUtil.stripFormatting(objective.getDisplayName());
         if (s.equalsIgnoreCase("CREEPER ATTACK")) {
             inCreeperAttack = true;
+            if (hudGui != null && hudGui.state != HudGui.State.LOBBY) {
+                hudGui = new HudGui();
+            }
             return;
         }
 
@@ -71,12 +71,14 @@ public class ClientEventHandler {
             if (event.type != ElementType.HOTBAR) return;
             if (ConfigData.disableAll) return;
             
-            if (!inCreeperAttack) {
+            if (inCreeperAttack) {
+                if (hudGui == null) hudGui = new HudGui();
+                hudGui.render(event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+            } else {
+                hudGui = null;
                 updateInCreeperAttack();
                 return;
             }
-
-            hudGui.render(event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -86,7 +88,7 @@ public class ClientEventHandler {
     public void onEvent(ClientChatReceivedEvent event) {
         if (!inCreeperAttack) return;
         try {
-            hudGui.chat(event);
+            if (hudGui != null) hudGui.chat(event);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -96,7 +98,7 @@ public class ClientEventHandler {
     public void onEvent(TickEvent.ClientTickEvent event) {
         if (!inCreeperAttack) return;
         try {
-            hudGui.tick(event);
+            if (hudGui != null) hudGui.tick(event);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -108,7 +110,7 @@ public class ClientEventHandler {
             if (event.entity instanceof EntityPlayer) return;
             if (!inCreeperAttack) return;
 
-            hudGui.entityJoin(event);
+            if (hudGui != null) hudGui.entityJoin(event);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -117,8 +119,14 @@ public class ClientEventHandler {
     @SubscribeEvent
     public void onEvent(WorldEvent.Load event) {
         try {
-            Minecraft minecraft = Minecraft.getMinecraft();
-            if (minecraft == null || minecraft.thePlayer == null || minecraft.theWorld == null) return;
+            updateInCreeperAttack();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    @SubscribeEvent
+    public void onEvent(PlayerChangedDimensionEvent event) {
+        try {
             updateInCreeperAttack();
         } catch (Exception e) {
             e.printStackTrace();
