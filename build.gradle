@@ -23,7 +23,7 @@ targetCompatibility = "1.8"
 String modid = "cahud"
 String mainClass = "CreeperAttackHUD"
 
-version = "1.0"
+version = "1.1"
 archivesBaseName = modid
 group = "com.mathgeniuszach.${modid}"
 
