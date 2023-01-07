@@ -40,7 +40,7 @@ public class HudGui extends Gui {
     public int timerI = 0;
     public long timer5 = 0;
     public long timer4 = 0;
-    public int timer5Activated = 40;
+    public int timer5Cooldown = 0;
     public int golemSpawn = 20;
 
     public int blazes = 0;
@@ -57,7 +57,7 @@ public class HudGui extends Gui {
 
     public List<String> renderLines;
 
-    public HashSet<UUID> joinedEntities = new HashSet<UUID>();
+    public HashSet<UUID> seenHashes = new HashSet<UUID>();
 
     public String formatGameTime() {
         long gameSeconds = gameTime / 20;
@@ -130,6 +130,24 @@ public class HudGui extends Gui {
         }
     }
 
+    public void activateTimer5(boolean sum) {
+        if (sum) timer5 += 100;
+        else timer5 = 100;
+
+        if (timer5Cooldown <= 0) {
+            timer5Cooldown = 40;
+
+            int[] maxCreepers = getMaxCreepers(wave);
+    
+            for (int i = 1; i < maxCreepers.length; i++) {
+                if (maxCreepers[i] > creeperSpawn) creepers++;
+            }
+            creeperSpawn++;
+    
+            if (!ConfigData.disable5Sound) CAUtil.playSound(ConfigData.soundTimer5);
+        }
+    }
+
     public void tick(TickEvent.ClientTickEvent event) {
         // System.out.println("tick");
         Minecraft mc = Minecraft.getMinecraft();
@@ -148,13 +166,15 @@ public class HudGui extends Gui {
             timer4 -= elapsedTicks;
             if (timer5 < 0) {
                 if (state == State.WAVE && creepers < getMaxCreepers(wave)[0]) {
-                    timer5 += 100;
-                    if (timer5Activated >= 40) timer5Activated = 0;
+                    activateTimer5(true);
                 } else {
                     timer5 = 0;
                 }
             }
             if (timer4 < -20) timer4 = -20;
+
+            timer5Cooldown -= elapsedTicks;
+            if (timer5Cooldown < 0) timer5Cooldown = 0;
         }
         
 
@@ -174,21 +194,6 @@ public class HudGui extends Gui {
                     if (!ConfigData.disableGolemSound && getGolems(wave) > 0) CAUtil.playSound(ConfigData.soundGolem); 
                 }
             }
-        }
-
-        if (timer5Activated == 0) {
-            timer5 = 100;
-            int[] maxCreepers = getMaxCreepers(wave);
-
-            for (int i = 1; i < maxCreepers.length; i++) {
-                if (maxCreepers[i] > creeperSpawn) creepers++;
-            }
-            creeperSpawn++;
-
-            if (!ConfigData.disable5Sound) CAUtil.playSound(ConfigData.soundTimer5);
-        }
-        if (timer5Activated < 40) {
-            timer5Activated += 1;
         }
         
         List<String> lines = new ArrayList<String>();
@@ -221,7 +226,6 @@ public class HudGui extends Gui {
             renderLines.add(String.format(Integer.parseInt(nums[0]) < 5 ? ConfigData.textPlayerBad : ConfigData.textPlayerGood, players));
             renderLines.add(String.format(ConfigData.textLobbyTime, time));
         } else if (state == State.END) {
-            joinedEntities.clear();
             renderLines = new ArrayList<String>();
             renderLines.add(String.format(ConfigData.textEndingHeader, ""+wave, formatGameTime()));
         } else {
@@ -275,10 +279,10 @@ public class HudGui extends Gui {
             creepersLeft = 0;
 
             if (blazes < getMaxBlazes(wave)) {
-                timer5Activated = 0;
+                activateTimer5(false);
                 blazes = getMaxBlazes(wave);
             } else {
-                joinedEntities.clear();
+                seenHashes.clear();
             }
 
             timerI = 0;
@@ -297,16 +301,15 @@ public class HudGui extends Gui {
         )) return;
 
         // Prevent entities from firing this event multiple times
-        if (joinedEntities.contains(event.entity.getUniqueID())) return;
-        joinedEntities.add(event.entity.getUniqueID());
+        if (seenHashes.contains(event.entity.getUniqueID())) return;
+        seenHashes.add(event.entity.getUniqueID());
 
         Minecraft mc = Minecraft.getMinecraft();
         
         // System.out.println("spawn");
         if (event.entity instanceof EntityBlaze) {
-            blazes += 1;
-            if (timer5Activated >= 40) timer5Activated = 0;
-            if (blazes < getMaxBlazes(wave)) timer5 = 100;
+            if (blazes < getMaxBlazes(wave)) blazes += 1;
+            activateTimer5(false);
         } else if (event.entity instanceof EntityCreeper) {
             // Print some data so I can see where the creeper spawned
             // System.out.println(event.entity.getPosition() + "; " + event.entity.getDistanceToEntity(mc.thePlayer) + "to P; " + event.entity.getDistance(-2450.5, 17, 749.5));
@@ -326,7 +329,7 @@ public class HudGui extends Gui {
                 creeperSpawn = 0;
                 zombiesComplete = false;
             }
-            if (timer5Activated >= 40) timer5Activated = 0;
+            activateTimer5(false);
         } else if (event.entity instanceof EntityZombie) {
             zombies += 1;
             timer4 = 80;
