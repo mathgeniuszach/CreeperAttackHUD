@@ -19,6 +19,7 @@ import net.minecraft.scoreboard.Score;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
+import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -26,6 +27,8 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 
 public class HudGui extends Gui {
+    public static final Vec3 VILLAGER_POS = new Vec3(-2450.5, 17, 748.5);
+
     public enum State {
         LOBBY,
         INTERMISSION,
@@ -48,14 +51,14 @@ public class HudGui extends Gui {
     public int zombies = 0;
 
     public int creeperSpawn = 0;
-
     public int creepersLeft = 0;
-
-    public boolean zombiesComplete = false;
-
     public int wave = 0;
 
     public List<String> renderLines;
+
+    public String title;
+    public float titleVisible = 0;
+    public float titleTime;
 
     public HashSet<UUID> seenHashes = new HashSet<UUID>();
 
@@ -69,11 +72,11 @@ public class HudGui extends Gui {
     }
 
     public static int[] getMaxCreepers(int w) {
-        if (w < 10) {
+        if (w < 9) {
             return new int[] {4, 1, 1, 1, 1};
         } else if (w < 19) {
             return new int[] {5, 2, 1, 1, 1};
-        } else if (w < 22) {
+        } else if (w < 20) {
             return new int[] {6, 2, 1, 2, 1};
         } else if (w < 25) {
             return new int[] {7, 3, 1, 2, 1};
@@ -136,6 +139,8 @@ public class HudGui extends Gui {
 
         if (timer5Cooldown <= 0) {
             timer5Cooldown = 40;
+
+            if (creeperSpawn > 0 && blazes < getMaxBlazes(wave)) blazes++;
 
             int[] maxCreepers = getMaxCreepers(wave);
     
@@ -236,7 +241,7 @@ public class HudGui extends Gui {
             int maxBlazes = getMaxBlazes(wave);
 
             if (firstLine.contains("Creepers left")) {
-                creepersLeft = Integer.parseInt(firstLine.substring(firstLine.lastIndexOf(" ")+1).trim());
+                creepersLeft = Integer.parseInt(firstLine.substring(firstLine.lastIndexOf(":")+1).trim());
             } else {
                 creepersLeft = 0;
             }
@@ -308,15 +313,33 @@ public class HudGui extends Gui {
         
         // System.out.println("spawn");
         if (event.entity instanceof EntityBlaze) {
-            if (blazes < getMaxBlazes(wave)) blazes += 1;
+            // Blaze Spawn Locations (20.928 blocks from villager)
+            // 1-2. (-2463.5, 27.0, 761.5)
+            // 2-3. (-2463.5, 27.0, 735.5)
+            // 3-4. (-2437.5, 27.0, 735.5)
+            // 4-1. (-2437.5, 27.0, 761.5)
+
+            // System.out.println("Blaze: " + event.entity.getPositionVector() + "; " + event.entity.getDistanceToEntity(mc.thePlayer) + " to P; " + VILLAGER_POS.distanceTo(event.entity.getPositionVector()) + " to V");
+
+            // Ignore Blaze "spawns" just inside the render distance
+            if (event.entity.getDistanceToEntity(mc.thePlayer) > 60) return;
+            // Ignore blaze "spawns" too close to the villager (the blaze moved already)
+            if (VILLAGER_POS.distanceTo(event.entity.getPositionVector()) < 20.5) return;
+
             activateTimer5(false);
         } else if (event.entity instanceof EntityCreeper) {
-            // Print some data so I can see where the creeper spawned
-            // System.out.println(event.entity.getPosition() + "; " + event.entity.getDistanceToEntity(mc.thePlayer) + "to P; " + event.entity.getDistance(-2450.5, 17, 749.5));
-            // Creeper spawns just inside the render distance should be ignored
+            // Creeper Spawn Locations (38 blocks from villager)
+            // 1. (-2450.5, 17.0, 786.5)
+            // 2. (-2488.5, 17.0, 748.5)
+            // 3. (-2450.5, 17.0, 710.5)
+            // 4. (-2412.5, 17.0, 748.5)
+
+            // System.out.println("Creeper: " + event.entity.getPositionVector() + "; " + event.entity.getDistanceToEntity(mc.thePlayer) + " to P; " + VILLAGER_POS.distanceTo(event.entity.getPositionVector()) + " to V");
+
+            // Ignore creeper "spawns" too far away from the player
             if (event.entity.getDistanceToEntity(mc.thePlayer) > 40) return;
-            // Creepers too close to villager clearly didn't JUST spawn...
-            if (event.entity.getDistance(-2450.5, 17, 749.5) < 35) return;
+            // Ignore creeper "spawns" too close to the villager (the creeper moved already)
+            if (VILLAGER_POS.distanceTo(event.entity.getPositionVector()) < 37.5) return;
             // Creepers that just spawned reset the wave timer
             if (state != State.WAVE && state != State.END) {
                 // New wave begins
@@ -327,13 +350,17 @@ public class HudGui extends Gui {
                 zombies = 0;
 
                 creeperSpawn = 0;
-                zombiesComplete = false;
             }
             activateTimer5(false);
         } else if (event.entity instanceof EntityZombie) {
             zombies += 1;
             timer4 = 80;
         }
+    }
+
+    public void drawCenteredText(FontRenderer fr, String text, int x, int y, int scale) {
+        GL11.glScalef(scale, scale, 1);
+        fr.drawStringWithShadow(text, x-(int)Math.ceil(fr.getStringWidth(text)/2.0) + (text.length()-1)/2, y, 0xFFFFFFFF);
     }
 
     public void render(int screenWidth, int screenHeight) {
@@ -345,19 +372,25 @@ public class HudGui extends Gui {
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         GL11.glPushMatrix();
 
-        // if (!ConfigData.disableBigCount && state == State.INTERMISSION && wave > 0) {
-        //     GL11.glPushMatrix();
+        GL11.glColor4f(1, 1, 1, 1);
 
-        //     GL11.glScalef(4, 4, 1);
-        //     if (timerI <= 5 && timerI > 0) drawString(fr, ""+timerI, 1, 1, 0xFFFFFFFF);
+        if (ConfigData.rotations.length > 0 && state == State.INTERMISSION && wave >= 49) {
+            GL11.glPushMatrix();
 
-        //     GL11.glPopMatrix();
-        // }
+            GL11.glTranslatef(screenWidth/2+ConfigData.rotXOffset, screenHeight/2+ConfigData.rotYOffset, 0);
+            drawCenteredText(fr, String.format(ConfigData.rotationText, ConfigData.rotations[(wave+1) % ConfigData.rotations.length]), 0, 0, ConfigData.rotScale);
+
+            GL11.glPopMatrix();
+        }
 
         if (renderLines != null) {
+            GL11.glPushMatrix();
+
             for (int i = 0; i < renderLines.size(); ++i) {
-                drawCenteredString(fr, renderLines.get(i), screenWidth/2+ConfigData.infoXOffset, fr.FONT_HEIGHT*i+ConfigData.infoYOffset, 0xFFFFFFFF);
+                drawCenteredText(fr, renderLines.get(i), screenWidth/2+1+ConfigData.infoXOffset, fr.FONT_HEIGHT*i+ConfigData.infoYOffset, ConfigData.infoScale);
             }
+
+            GL11.glPopMatrix();
         }
         GlStateManager.disableAlpha();
 

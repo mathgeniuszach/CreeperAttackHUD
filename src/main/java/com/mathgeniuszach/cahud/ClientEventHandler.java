@@ -107,7 +107,12 @@ public class ClientEventHandler {
     @SubscribeEvent
     public void onEvent(EntityJoinWorldEvent event) {
         try {
-            if (event.entity instanceof EntityPlayer) return;
+            if (event.entity instanceof EntityPlayer) {
+                if (event.entity.isEntityEqual(Minecraft.getMinecraft().thePlayer)) {
+                    updateInCreeperAttack();
+                }
+                return;
+            }
             if (!inCreeperAttack) return;
 
             if (hudGui != null) hudGui.entityJoin(event);

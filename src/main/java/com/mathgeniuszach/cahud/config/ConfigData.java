@@ -2,7 +2,9 @@ package com.mathgeniuszach.cahud.config;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.mathgeniuszach.cahud.CreeperAttackHUD;
 
@@ -19,7 +21,7 @@ import net.minecraftforge.fml.client.event.ConfigChangedEvent.OnConfigChangedEve
 public class ConfigData {
     public static Configuration CONFIG;
 
-    public static final String[] CATEGORIES = {"general", "texts"};
+    public static final String[] CATEGORIES = {"general", "texts", "advanced"};
 
     public ConfigData(File file) {
         MinecraftForge.EVENT_BUS.register(this);
@@ -36,13 +38,14 @@ public class ConfigData {
     public static boolean disableCreeper;
     public static boolean disableZombie;
     public static boolean disableNextWave;
-    public static boolean disableBigCount;
+    // public static boolean disableBigCount;
 
     public static boolean disable5Sound;
     public static boolean disableGolemSound;
 
     public static int infoXOffset;
     public static int infoYOffset;
+    public static int infoScale;
     // public static double infoXAlign;
     // public static double infoYAlign;
 
@@ -62,6 +65,16 @@ public class ConfigData {
     public static String textWaveZombie;
     public static String textEndingHeader;
 
+    public static String[] rotations;
+    public static String rotationText;
+    // public static boolean safetyPing;
+    // public static String safetyPingSound;
+    // public static String safetyPingText;
+
+    public static int rotXOffset;
+    public static int rotYOffset;
+    public static int rotScale;
+
     public static void loadConfig() {
         disableAll = getBoolean("general", "disableAll", false, "Disable the entire mod.");
         disableHUD = getBoolean("general", "disableHUD", false, "Disable all HUD information.");
@@ -78,6 +91,7 @@ public class ConfigData {
 
         infoXOffset = getInt("general", "infoXOffset", 0, "X Offset for info");
         infoYOffset = getInt("general", "infoYOffset", 20, "Y Offset for info");
+        infoScale = getIntRange("general", "infoScale", 1, 1, 8, "Scale for info");
 
         soundTimer5 = getString("general", "soundTimer5", "mob.guardian.curse 1.0 1.2", "The sound event to play when a blaze/creepers spawn. Volume and pitch needed.");
         soundGolem = getString("general", "soundGolem", "random.anvil_land 1 2", "The sound event to play when iron golems spawn. Volume and pitch needed.");
@@ -95,12 +109,29 @@ public class ConfigData {
         textWaveZombie = getString("texts", "textWaveZombie", "§3Zombies: %s - %s", "Zombie line text.");
         textEndingHeader = getString("texts", "textEnding", "§lEND - WAVE %s - %s", "Ending header text.");
 
+        rotations = getPlayers("advanced", "rotations", "", "Playernames separated by comma. Specifies the middle turn order. Leave blank to hide text.");
+        rotationText = getString("advanced", "rotationText", "§l§b%s's turn!", "Text that shows who's turn it is in middle.");
+        // safetyPing = getBoolean("advanced", "safetyPing", false, "Pings you if you're too close to middle at the start of round 50+ when you shouldn't be.");
+        // safetyPingSound = getString("advanced", "safetyPingSound", "note.pling 1 1.2", "Sound to ping with repeatedly while in mid. Volume and pitch needed.");
+        // safetyPingText = getString("advanced", "safetyPingText", "§l§cGet into a lane quickly!", "Text that shows when you need to get out of middle.");
+
+        rotXOffset = getInt("advanced", "rotXOffset", 0, "X Offset for rotation text");
+        rotYOffset = getInt("advanced", "rotYOffset", 20, "Y Offset for rotation text");
+        rotScale = getIntRange("advanced", "rotScale", 2, 1, 8, "Scale for rotation text.");
+
         if (CONFIG.hasChanged()) CONFIG.save();
     }
 
     public static int getInt(String category, String key, int defValue, String comment) {
         Property prop = CONFIG.get(category, key, defValue);
         prop.comment = comment;
+        return prop.getInt();
+    }
+    public static int getIntRange(String category, String key, int defValue, int min, int max, String comment) {
+        Property prop = CONFIG.get(category, key, defValue);
+        prop.comment = comment;
+        prop.setMinValue(min);
+        prop.setMaxValue(max);
         return prop.getInt();
     }
 
@@ -120,6 +151,17 @@ public class ConfigData {
         Property prop = CONFIG.get(category, key, defValue);
         prop.comment = comment;
         return prop.getDouble();
+    }
+
+    public static String[] getPlayers(String category, String key, String defValue, String comment) {
+        Property prop = CONFIG.get(category, key, defValue);
+        prop.comment = comment;
+        
+        return Arrays.asList(prop.getString().split(",")).stream()
+            .map(s -> s.trim()) // Remove beginning and ending spaces
+            .filter(s -> !s.isEmpty()) // Remove empty strings
+            .collect(Collectors.toList())
+            .toArray(new String[0]);
     }
 
     public static int getColor(String category, String key, String defColor, String comment) {
