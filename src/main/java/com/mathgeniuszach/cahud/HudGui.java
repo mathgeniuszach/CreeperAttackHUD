@@ -50,6 +50,7 @@ public class HudGui extends Gui {
     public int creepers = 0;
     public int zombies = 0;
 
+    public int zombiesLeft = 0;
     public int creeperSpawn = 0;
     public int creepersLeft = 0;
     public int wave = 0;
@@ -72,40 +73,52 @@ public class HudGui extends Gui {
     }
 
     public static int[] getMaxCreepers(int w) {
-        if (w < 9) {
+        if (w <= 8) {
             return new int[] {4, 1, 1, 1, 1};
-        } else if (w < 19) {
+        } else if (w <= 18) {
             return new int[] {5, 2, 1, 1, 1};
-        } else if (w < 20) {
+        } else if (w <= 19) {
             return new int[] {6, 2, 1, 2, 1};
-        } else if (w < 25) {
+        } else if (w <= 24) {
             return new int[] {7, 3, 1, 2, 1};
-        } else if (w < 29) {
+        } else if (w <= 28) {
             return new int[] {8, 3, 1, 3, 1};
-        } else if (w < 35) {
+        } else if (w <= 34) {
             return new int[] {9, 3, 2, 3, 1};
-        } else if (w < 39) {
+        } else if (w <= 38) {
             return new int[] {10, 3, 2, 3, 2};
-        } else if (w < 40) {
+        } else if (w <= 39) {
             return new int[] {11, 3, 2, 3, 3};
-        } else if (w < 45) {
+        } else if (w <= 44) {
             return new int[] {12, 4, 2, 3, 3};
-        } else if (w < 49) {
+        } else if (w <= 48) {
             return new int[] {14, 5, 2, 4, 3};
-        } else if (w < 50) {
+        } else if (w <= 49) {
             return new int[] {15, 5, 2, 5, 3};
-        } else {
+        } else { // w >= 50
             return new int[] {33, 10, 5, 10, 8};
         }
+    }
+    public static int getGolems(int w) {
+        return w > 50 ? 10 : w % 5 == 0 ? (w/5 - 1)/2 + 1 : 0;
     }
     public static int getMaxBlazes(int w) {
         return w >= 46 ? 5 : w % 5 == 0 ? 0 : w / 10;
     }
-    // public int getMaxZombies() {
-    //     return 10000;
-    // }
-    public static int getGolems(int w) {
-        return w > 50 ? 10 : w % 5 == 0 ? (w/5 - 1)/2 + 1 : 0;
+    public static int getMaxPigmen(int w) {
+        return w >= 46 ? 9 : w % 5 == 0 ? 0 : w / 5;
+    }
+    public static int getMaxSkeletons(int w) {
+        if (w >= 50) return 20;
+        if (w % 5 == 0 || w < 5) return 0;
+
+        if (w == 22) return 8; // Probably a typo in the wave code
+        if (w == 49) return 19; // Probably for a more smooth transition to wave 50 from 48
+
+        return (w / 5) * 2 + (w % 5 - 1) / 2 - 1;
+    }
+    public static int getMaxZombies(int w) {
+        return w >= 50 ? 59 : w % 5 == 0 || w == 1 ? 0 : w+w/5;
     }
 
     public static int getPlayerCount() {
@@ -114,23 +127,23 @@ public class HudGui extends Gui {
     }
 
     public static String getMobString(int w) {
-        int blazes = getMaxBlazes(w);
-        int creepers = getMaxCreepers(w)[0];
-        int golems = getGolems(w);
+        StringBuilder sb = new StringBuilder();
 
-        if (golems > 0) {
-            if (blazes > 0) {
-                return String.format("§2%dC §7%dI §6%dB", creepers, golems, blazes);
-            } else {
-                return String.format("§2%dC §7%dI", creepers, golems);
-            }
-        } else {
-            if (blazes > 0) {
-                return String.format("§2%dC §6%dB", creepers, blazes);
-            } else {
-                return String.format("§2%dC", creepers);
-            }
-        }
+        sb.append(String.format("§2%dC", getMaxCreepers(w)[0]));
+
+        int golems = getGolems(w);
+        int blazes = getMaxBlazes(w);
+        int pigmen = getMaxPigmen(w);
+        int skeletons = getMaxSkeletons(w);
+        int zombies = getMaxZombies(w);
+
+        if (golems > 0) sb.append(String.format(" §f%dI", golems));
+        if (blazes > 0) sb.append(String.format(" §6%dB", blazes));
+        if (pigmen > 0) sb.append(String.format(" §e%dP", pigmen));
+        if (skeletons > 0) sb.append(String.format(" §7%dS", skeletons));
+        if (zombies > 0) sb.append(String.format(" §3%dZ", zombies));
+
+        return sb.toString();
     }
 
     public void activateTimer5(boolean sum) {
@@ -358,9 +371,11 @@ public class HudGui extends Gui {
         }
     }
 
-    public void drawCenteredText(FontRenderer fr, String text, int x, int y, int scale) {
+    public void drawCenteredText(FontRenderer fr, String text, int x, int y, int scale, boolean fix) {
         GL11.glScalef(scale, scale, 1);
-        fr.drawStringWithShadow(text, x-(int)Math.ceil(fr.getStringWidth(text)/2.0) + (text.length()-1)/2, y, 0xFFFFFFFF);
+        int ox = x-(int)Math.ceil(fr.getStringWidth(text)/2.0);
+        if (fix) ox += (text.length()-1)/2;
+        fr.drawStringWithShadow(text, ox, y, 0xFFFFFFFF);
     }
 
     public void render(int screenWidth, int screenHeight) {
@@ -378,7 +393,7 @@ public class HudGui extends Gui {
             GL11.glPushMatrix();
 
             GL11.glTranslatef(screenWidth/2+ConfigData.rotXOffset, screenHeight/2+ConfigData.rotYOffset, 0);
-            drawCenteredText(fr, String.format(ConfigData.rotationText, ConfigData.rotations[(wave+1) % ConfigData.rotations.length]), 0, 0, ConfigData.rotScale);
+            drawCenteredText(fr, String.format(ConfigData.rotationText, ConfigData.rotations[(wave+1) % ConfigData.rotations.length]), 0, 0, ConfigData.rotScale, true);
 
             GL11.glPopMatrix();
         }
@@ -387,7 +402,7 @@ public class HudGui extends Gui {
             GL11.glPushMatrix();
 
             for (int i = 0; i < renderLines.size(); ++i) {
-                drawCenteredText(fr, renderLines.get(i), screenWidth/2+1+ConfigData.infoXOffset, fr.FONT_HEIGHT*i+ConfigData.infoYOffset, ConfigData.infoScale);
+                drawCenteredText(fr, renderLines.get(i), screenWidth/2+1+ConfigData.infoXOffset, fr.FONT_HEIGHT*i+ConfigData.infoYOffset, ConfigData.infoScale, false);
             }
 
             GL11.glPopMatrix();
