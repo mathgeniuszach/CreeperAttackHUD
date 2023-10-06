@@ -20,6 +20,10 @@ The mod also plays two configurable sound effects when:
 
 On an unrelated note, you should also check out my 1.8 [ModernInfo](https://github.com/xMGZx/ModernInfo) mod, which provides critical information about your bow charge rate (the last sprite shows at 90% charged, while a crit arrow requires you to hold the bow 2 ticks longer) and potential to melee, and reveals all mobs' custom name tags from everywhere (so you can see creeper attack mob health everywhere).
 
+## Contact
+
+Contact me on [Discord](https://discord.gg/pBFqEcXvW5) and support me on [Ko-Fi](https://ko-fi.com/mathgeniuszach)!
+
 ## Screenshots
 
 ![wave](screenshots/wave.png)
